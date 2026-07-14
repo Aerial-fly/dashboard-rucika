@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Produk & Parameter QC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg spc-nav sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="#">SPC Dashboard</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="/">Form Input (Operator)</a></li>
+        <li class="nav-item"><a class="nav-link" href="/dashboard">TV Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/settings">Settings</a></li>
+        <li class="nav-item"><a class="nav-link" href="/riwayat">Riwayat</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+
+            <div class="card spc-card border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 pt-3 pb-0" style="border-radius: 12px 12px 0 0;">
+                    <h5 class="mb-0 fw-bold" style="color:#1F4E78;">⚙️ Master Produk & Standar Parameter</h5>
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#tambahModal">+ Tambah Produk Baru</button> 
+                </div>
+                <div class="card-body p-0">
+                    <table class="table spc-table text-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nama Produk</th>
+                                <th>Parameter Khusus (Dinamis)</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in daftar_produk %}
+                            <tr class="align-middle">
+                                <td>{{ p.id }}</td>
+                                <td class="text-start fw-bold" style="color:#1F4E78;">{{ p.nama_produk }}</td>
+                                <td><small class="text-muted">Lihat/Edit Parameter di Modal</small></td>
+                                <td><button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal{{ p.id }}">Edit</button></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="text-muted mt-2 text-end" style="font-size: 0.85rem;">
+                *Catatan: Parameter dengan tanda (-) berarti tidak dievaluasi.
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% for p in daftar_produk %}
+<div class="modal fade text-start" id="editModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color:#1F4E78; color:#fff;">
+                <h5 class="modal-title fw-bold">Edit Parameter: {{ p.nama_produk }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/api/edit-produk" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="id" value="{{ p.id }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nama Produk</label>
+                        <input type="text" class="form-control" name="nama_produk" value="{{ p.nama_produk }}" required>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info py-2" style="font-size: 0.9rem;">
+                        <strong>💡 Tips:</strong> Kosongkan kotak batas jika parameter tersebut tidak ada standar nilai (bebas).
+                    </div>
+                    <div class="mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addParamRow('edit-param-container-{{ p.id }}')">+ Tambah Parameter Khusus</button>
+                    </div>
+                    
+                    <div id="edit-param-container-{{ p.id }}">
+                        {% for param in p.param_list %}
+                        <div class="row mb-3 align-items-center param-row border p-3 rounded bg-white shadow-sm">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control param-name" value="{{ param.name }}" required placeholder="Nama Parameter">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" step="any" class="form-control param-lcl" value="{{ param.lcl if param.lcl is not none else '' }}" placeholder="LSL (Batas Bawah)">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" step="any" class="form-control param-ucl" value="{{ param.ucl if param.ucl is not none else '' }}" placeholder="USL (Batas Atas)">
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-danger w-100" onclick="this.parentElement.parentElement.remove()">X</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="parameter_dinamis" id="edit_parameter_dinamis_{{ p.id }}">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<div class="modal fade" id="tambahModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color:#1F4E78; color:#fff;">
+                <h5 class="modal-title fw-bold">Tambah Produk Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/api/tambah-produk" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nama Produk Baru *</label>
+                        <input type="text" class="form-control" name="nama_produk" placeholder="Misal: Pipa C 5..." required>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info py-2" style="font-size: 0.9rem;">
+                        <strong>💡 Tips:</strong> Kosongkan kotak batas jika parameter tersebut tidak ada standar nilai (bebas).
+                    </div>
+                    <div class="mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addParamRow('tambah-param-container')">+ Tambah Parameter Khusus</button>
+                    </div>
+                    <div id="tambah-param-container"></div>
+                    <input type="hidden" name="parameter_dinamis" id="tambah_parameter_dinamis">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Simpan Produk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function addParamRow(containerId) {
+    const container = document.getElementById(containerId);
+    const row = document.createElement('div');
+    row.className = 'row mb-3 align-items-center param-row border p-3 rounded bg-white shadow-sm';
+    row.innerHTML = `
+        <div class="col-md-5">
+            <input type="text" class="form-control param-name" placeholder="Nama Parameter" required>
+        </div>
+        <div class="col-md-3">
+            <input type="number" step="any" class="form-control param-lcl" placeholder="LSL (Batas Bawah)">
+        </div>
+        <div class="col-md-3">
+            <input type="number" step="any" class="form-control param-ucl" placeholder="USL (Batas Atas)">
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-danger w-100" onclick="this.parentElement.parentElement.remove()">X</button>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const container = this.querySelector('[id*="-param-container"]');
+        if (container) {
+            const params = [];
+            let isValid = true;
+            
+            container.querySelectorAll('.param-row').forEach(row => {
+                const nameVal = row.querySelector('.param-name').value.trim();
+                const lclVal = row.querySelector('.param-lcl').value;
+                const uclVal = row.querySelector('.param-ucl').value;
+                
+                if (!nameVal) isValid = false;
+                
+                params.push({
+                    name: nameVal,
+                    lcl: lclVal !== '' ? parseFloat(lclVal) : null,
+                    ucl: uclVal !== '' ? parseFloat(uclVal) : null
+                });
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert("Harap isi semua Nama Parameter yang wajib!");
+                return;
+            }
+            
+            const finalJson = params.length > 0 ? JSON.stringify(params) : '[]';
+            this.querySelector('input[name="parameter_dinamis"]').value = finalJson;
+        }
+    });
+});
+</script>
+</body>
+</html>

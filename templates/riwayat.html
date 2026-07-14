@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat & Hapus Data QC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- GLOBAL NAVBAR -->
+<nav class="navbar navbar-expand-lg spc-nav sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="#">SPC Dashboard</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="/">Form Input (Operator)</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/dashboard">TV Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/settings">Settings</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active" href="/riwayat">Riwayat</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid py-3 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0" style="color:#1F4E78;">Riwayat Input QC (100 Data Terakhir)</h4>
+    </div>
+
+    <!-- KOTAK PENCARIAN -->
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text text-white" style="background-color:#1F4E78;">🔍</span>
+                <input type="text" id="searchInput" class="form-control" placeholder="Cari Mesin, Shift, Produk, atau Status...">
+            </div>
+        </div>
+    </div>
+
+    <div class="card spc-card border-0">
+        <div class="card-body p-0 table-responsive">
+            <table class="table spc-table text-center mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Waktu Input</th>
+                        <th>Produk</th>
+                        <th>Mesin</th>
+                        <th>Shift/Grup</th>
+                        <th>Parameter Dinamis</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data_riwayat %}
+                    <tr>
+                        <td class="fw-bold">{{ row.id }}</td>
+                        <td>{{ row.tanggal }} <br> <small class="text-muted">{{ row.waktu }}</small></td>
+                        <td class="text-start fw-bold" style="color:#1F4E78;">{{ row.nama_produk if row.nama_produk else 'Produk Terhapus' }}</td>
+                        <td>{{ row.mesin }}</td>
+                        <td>{{ row.shift }} / {{ row.grup }}</td>
+                        <!-- PARSED PARAMETER DINAMIS -->
+                        <td class="text-start" style="max-width: 250px;">
+                            <span class="parsed-param" data-raw="{{ row.parameter_dinamis if row.parameter_dinamis else '{}' }}">-</span>
+                        </td>
+                        
+                        <!-- KOLOM AKSI -->
+                        <td>
+                            <div class="d-flex justify-content-center gap-1">
+                                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editQcModal{{ row.id }}">✏️ Edit</button>
+                                <form action="/api/hapus-qc/{{ row.id }}" method="POST" onsubmit="return confirm('🚨 YAKIN INGIN MENGHAPUS DATA ID {{ row.id }}?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- MODAL EDIT DATA QC -->
+                    <div class="modal fade text-start" id="editQcModal{{ row.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header" style="background-color:#1F4E78; color:#fff;">
+                                    <h5 class="modal-title fw-bold">✏️ Edit Data QC (ID: {{ row.id }})</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="/api/edit-qc" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="id" value="{{ row.id }}">
+                                        
+                                        <div class="alert alert-secondary py-2 mb-3" style="font-size: 0.85rem;">
+                                            <strong>Info:</strong> Produk <b>{{ row.nama_produk }}</b> | Mesin <b>{{ row.mesin }}</b> | Shift <b>{{ row.shift }}</b>
+                                        </div>
+
+                                        <div class="row">
+    <div class="col-12 mb-3">
+        <label class="form-label fw-bold" style="color:#1F4E78;">Nilai Parameter Aktual</label>
+        
+        {% if row.param_dict %}
+            {% for key, val in row.param_dict.items() %}
+            <div class="input-group mb-2 shadow-sm">
+                <span class="input-group-text w-50 bg-light fw-bold">{{ key }}</span>
+                <input type="number" step="any" class="form-control" name="dyn_{{ key }}" value="{{ val }}">
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning py-2">Tidak ada parameter dinamis yang tercatat untuk data ini.</div>
+        {% endif %}
+        
+    </div>
+</div>
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="alert alert-warning mt-3" role="alert">
+        <strong>Peringatan:</strong> Halaman ini memberikan akses langsung ke database, menghapus baris di sini akan menghapusnya secara permanen dari sistem dan dari Laporan Excel.
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// Parse raw JSON in parameter_dinamis and render as readable text
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.parsed-param').forEach(span => {
+        const raw = span.dataset.raw;
+        try {
+            const obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                const entries = Object.entries(obj);
+                if (entries.length === 0) {
+                    span.textContent = '-';
+                    return;
+                }
+                const parts = entries.map(([key, val]) => {
+                    const displayVal = (val !== null && val !== undefined) ? val : '-';
+                    return `${key}: ${displayVal}`;
+                });
+                span.textContent = parts.join(' | ');
+            } else if (Array.isArray(obj)) {
+                if (obj.length === 0) {
+                    span.textContent = '-';
+                    return;
+                }
+                // Handle array format (legacy)
+                const parts = obj.map(item => {
+                    if (typeof item === 'object' && item.name) {
+                        const val = item.value !== undefined ? item.value : '-';
+                        return `${item.name}: ${val}`;
+                    }
+                    return JSON.stringify(item);
+                });
+                span.textContent = parts.join(' | ');
+            } else {
+                span.textContent = '-';
+            }
+        } catch(e) {
+            span.textContent = raw && raw !== '{}' && raw !== '[]' ? raw : '-';
+        }
+    });
+});
+
+// Live Search
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+</script>
+</body>
+</html>

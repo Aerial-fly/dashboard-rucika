@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: spc_mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=spc_database
+      - MYSQL_USER=spc_user
+      - MYSQL_PASSWORD=spc_password
+      - TZ=Asia/Jakarta
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  web:
+    build: .
+    container_name: spc_flask
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DB_HOST=db
+      - DB_USER=spc_user
+      - DB_PASSWORD=spc_password
+      - DB_NAME=spc_database
+      - TZ=Asia/Jakarta
+    depends_on:
+      - db
+
+  # TAMBAHAN BARU: FITUR PHPMYADMIN
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: spc_phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=root
+      - PMA_PASSWORD=rootpassword
+    depends_on:
+      - db
+
+volumes:
+  db_data:

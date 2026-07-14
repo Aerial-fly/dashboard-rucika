@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPC Input - Quality Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- GLOBAL NAVBAR -->
+<nav class="navbar navbar-expand-lg spc-nav sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="#">SPC Dashboard</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="/">Form Input (Operator)</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/dashboard">TV Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/settings">Settings</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/riwayat">Riwayat</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card spc-card p-4">
+                <h4 class="mb-4 text-center fw-bold" style="color:#1F4E78;">Form Pengukuran</h4>
+                
+                <div id="alert-box" class="alert d-none" role="alert"></div>
+
+
+                <!-- Product Selector — ALWAYS VISIBLE -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold" style="color:#1F4E78;">📦 Pilih Produk yang Diproduksi</label>
+                    <select class="form-select" name="id_produk" id="id_produk" required>
+                        <option value="" selected disabled>-- Silakan Pilih Produk --</option>
+                        {% for p in daftar_produk %}
+                        <option value="{{ p.id }}">{{ p.nama_produk }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Pastikan memilih produk yang sesuai dengan aktual di lapangan.</div>
+                </div>
+
+                <hr class="mb-4">
+
+                <!-- FORM BODY: Hidden until a product is selected -->
+                <div id="form-body" style="display: none;">
+                    <form id="qc-form">
+                        <!-- BARIS 1: Identitas Proses -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Shift *</label>
+                                <select id="shift" class="form-select" required>
+                                    <option value="" disabled selected>Pilih...</option>
+                                    <option value="1">Shift 1</option>
+                                    <option value="2">Shift 2</option>
+                                    <option value="3">Shift 3</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Grup Regu *</label>
+                                <select id="grup" class="form-select" required>
+                                    <option value="" disabled selected>Pilih...</option>
+                                    <option value="A">Grup A</option>
+                                    <option value="B">Grup B</option>
+                                    <option value="C">Grup C</option>
+                                    <option value="D">Grup D</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Mesin/Line *</label>
+                                <input class="form-control" list="list-mesin" id="mesin" placeholder="Pilih / Ketik..." required>
+                                <datalist id="list-mesin"></datalist>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fase Waktu *</label>
+                                <select id="waktu" class="form-select" required>
+                                    <option value="" disabled selected>Pilih...</option>
+                                    <option value="AWAL">AWAL</option>
+                                    <option value="TENGAH">TENGAH</option>
+                                    <option value="AKHIR">AKHIR</option>
+                                </select>
+                            </div>
+                        </div>
+
+
+
+                        <!-- BARIS 4: Dynamic Parameters (Chameleon) -->
+                        <h6 class="fw-bold mt-3 mb-2 pb-2" style="color:#1F4E78; border-bottom: 2px solid #1F4E78;">Parameter Mesin Khusus Produk</h6>
+                        <div class="row mb-4" id="dynamic-params-container">
+                            <div class="col-12 text-muted fst-italic">Memuat parameter...</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold" id="btn-submit">Simpan Data Pengukuran</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const alertBox = document.getElementById('alert-box');
+
+    // Load machine list on page load
+    async function loadMesin() {
+        try {
+            const response = await fetch('/api/list-mesin');
+            const result = await response.json();
+            if (response.ok) {
+                const datalist = document.getElementById('list-mesin');
+                datalist.innerHTML = '';
+                result.data.forEach(mesin => {
+                    const option = document.createElement('option');
+                    option.value = mesin;
+                    datalist.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("Gagal memuat daftar mesin:", error);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', loadMesin);
+
+    // CHAMELEON FORM: Show form body + load dynamic parameters on product change
+    document.getElementById('id_produk').addEventListener('change', async function() {
+        const id = this.value;
+        if (!id) return;
+
+        document.getElementById('form-body').style.display = 'block';
+        const container = document.getElementById('dynamic-params-container');
+        container.innerHTML = '<div class="col-12 text-muted fst-italic">Memuat parameter...</div>';
+
+        try {
+            const response = await fetch(`/api/get-produk/${id}`);
+            const result = await response.json();
+            container.innerHTML = '';
+
+            if (result) {
+                let params = [];
+                let rawData = result.parameter_dinamis;
+                while (typeof rawData === 'string' && rawData.trim() !== '') {
+                    try {
+                        rawData = JSON.parse(rawData);
+                    } catch(e) {
+                        break;
+                    }
+                }
+                if (Array.isArray(rawData)) {
+                    params = rawData;
+                }
+
+                if (params.length === 0) {
+                    container.innerHTML = '<div class="col-12 text-muted fst-italic">Tidak ada parameter khusus untuk produk ini.</div>';
+                } else {
+                    params.forEach(p => {
+                        const lclText = p.lcl !== null && p.lcl !== undefined ? `Min: ${p.lcl}` : '';
+                        const uclText = p.ucl !== null && p.ucl !== undefined ? `Max: ${p.ucl}` : '';
+                        const parts = [lclText, uclText].filter(Boolean);
+                        const rangeText = parts.length > 0 ? `(${parts.join(' – ')})` : '';
+
+                        const col = document.createElement('div');
+                        col.className = 'col-md-3 mb-2';
+                        col.innerHTML = `
+                            <label class="form-label">${p.name} <small class="fw-bold" style="color:#1F4E78;">${rangeText}</small></label>
+                            <input type="number" step="any" class="form-control dynamic-param-input" data-name="${p.name}" data-lcl="${p.lcl !== null && p.lcl !== undefined ? p.lcl : ''}" data-ucl="${p.ucl !== null && p.ucl !== undefined ? p.ucl : ''}">
+                        `;
+                        container.appendChild(col);
+                    });
+                }
+                
+                // Real-time validation
+                document.querySelectorAll('.dynamic-param-input').forEach(input => {
+                    input.addEventListener('input', function() {
+                        const val = parseFloat(this.value);
+                        const lcl = this.dataset.lcl !== '' ? parseFloat(this.dataset.lcl) : null;
+                        const ucl = this.dataset.ucl !== '' ? parseFloat(this.dataset.ucl) : null;
+                        
+                        let isOut = false;
+                        if (!isNaN(val)) {
+                            if (lcl !== null && val < lcl) isOut = true;
+                            if (ucl !== null && val > ucl) isOut = true;
+                        }
+                        
+                        if (isOut) {
+                            this.classList.add('border-danger', 'text-danger');
+                            this.style.borderWidth = '2px';
+                        } else {
+                            this.classList.remove('border-danger', 'text-danger');
+                            this.style.borderWidth = '';
+                        }
+                    });
+                });
+            } else {
+                container.innerHTML = '<div class="col-12 text-muted fst-italic">Tidak ada parameter khusus untuk produk ini.</div>';
+            }
+        } catch(err) {
+            container.innerHTML = '<div class="col-12 text-danger">Gagal memuat parameter.</div>';
+            console.error("Error fetching product parameters", err);
+        }
+    });
+
+    function showAlert(type, message) {
+        alertBox.className = `alert alert-${type}`;
+        alertBox.innerText = message;
+        alertBox.classList.remove('d-none');
+        setTimeout(() => { alertBox.classList.add('d-none'); }, 6000);
+    }
+
+    // Manual QC Input (YANG SUDAH DIPERBAIKI)
+    document.getElementById('qc-form').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Mencegah browser nge-refresh halaman
+        const btnSubmit = document.getElementById('btn-submit');
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "Menyimpan...";
+
+        const dynamicInputs = document.querySelectorAll('.dynamic-param-input');
+        const paramDinamis = {};
+        dynamicInputs.forEach(input => {
+            const val = input.value;
+            paramDinamis[input.dataset.name] = val !== "" ? parseFloat(val) : null;
+        });
+
+        const data = {
+            id_produk: document.getElementById('id_produk').value,
+            shift: document.getElementById('shift').value,
+            grup: document.getElementById('grup').value,
+            mesin: document.getElementById('mesin').value,
+            waktu: document.getElementById('waktu').value,
+            parameter_dinamis: paramDinamis
+        };
+
+        try {
+            const response = await fetch('/api/qc-input', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (response.ok) {
+                showAlert('success', `Sukses! Data tersimpan.`);
+                document.getElementById('waktu').value = ""; // Reset dropdown waktu saja biar operator gampang input data selanjutnya
+                document.querySelectorAll('.dynamic-param-input').forEach(input => {
+                    input.value = "";
+                    input.classList.remove('border-danger', 'text-danger');
+                    input.style.borderWidth = '';
+                });
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            showAlert('danger', "Gagal menyimpan data: " + error.message);
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "Simpan Data Pengukuran";
+        }
+    });
+</script>
+</body>
+</html>
