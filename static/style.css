@@ -158,10 +158,9 @@ body.tv-mode .machine-block.active-slide {
 
 /* IN REVIEW MODE: Tampilkan semua bertumpuk normal */
 body:not(.tv-mode) .machine-block {
-    display: block !important;
-    position: relative !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    position: relative;
+    opacity: 1;
+    visibility: visible;
 }
 
 /* Machine header bar */
@@ -214,9 +213,21 @@ body:not(.tv-mode) .machine-block {
    so the layout stays neat whether a product has 0, 1, or 5 dynamic params. */
 .charts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    /* Force 3 columns on large screens */
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+    .charts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 768px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .chart-box {
@@ -249,7 +260,9 @@ body:not(.tv-mode) .machine-block {
    always has a bounded box to render into. */
 .height-main {
     position: relative;
-    height: 300px;
+    /* Disesuaikan menjadi 26vh agar box summary di bawahnya muat 100% tanpa perlu scroll di TV */
+    height: 26vh; 
+    min-height: 180px;
     width: 100%;
 }
 .height-sub {
@@ -260,4 +273,29 @@ body:not(.tv-mode) .machine-block {
 
 .dynamic-subchart {
     animation: spcPageIn 0.3s ease;
+}
+
+/* MEDIA QUERIES UNTUK RESPONSIVE DI HP */
+@media (max-width: 767.98px) {
+    .stat-tag {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+    }
+    .machine-title {
+        font-size: 1rem;
+    }
+    .machine-title .badge {
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+    .machine-header {
+        padding: 10px 12px;
+    }
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
 }

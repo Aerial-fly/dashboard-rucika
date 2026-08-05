@@ -5,10 +5,10 @@ let currentSlideIndex = 0;
 let slideTimer = null;
 
 // STATUS API UNTUK JAM REAL-TIME
-let apiError = false; 
+let apiError = false;
 
 // MEMORI V2: Simpan preferensi Per-Line
-let lineMeta = {}; 
+let lineMeta = {};
 let dashboardPrefs = JSON.parse(localStorage.getItem('spc_prefs_v2')) || {};
 
 const commonChartOptions = {
@@ -27,13 +27,13 @@ function toggleMode() {
     const body = document.body;
 
     if (isTvMode) {
-        btn.innerText = "📺 Mode TV: ON";
+        btn.innerText = "Live monitoring";
         btn.className = "btn btn-warning btn-sm fw-bold me-2";
         body.classList.add('tv-mode');
         runSlideshow();
         refreshDashboardEngine();
     } else {
-        btn.innerText = "⏸️ Mode Review: MANUAL";
+        btn.innerText = "Mode Review";
         btn.className = "btn btn-secondary btn-sm fw-bold me-2";
         body.classList.remove('tv-mode');
         clearTimeout(slideTimer);
@@ -43,22 +43,33 @@ function toggleMode() {
 }
 
 function runSlideshow() {
-    if (!isTvMode || activeMachines.length === 0) return;
+    clearTimeout(slideTimer); // Clear at the very beginning to prevent race conditions
+
+    if (!isTvMode || activeMachines.length === 0) {
+        return;
+    }
+
+    // Pastikan index tidak out of bounds jika ada mesin yang dihapus
+    if (currentSlideIndex >= activeMachines.length) {
+        currentSlideIndex = 0;
+    }
 
     document.querySelectorAll('.machine-block').forEach(el => el.classList.remove('active-slide'));
 
     const currentMachine = activeMachines[currentSlideIndex];
     const block = document.getElementById(`machine-block-${currentMachine}`);
-    if (block) block.classList.add('active-slide');
+    if (block) {
+        block.classList.add('active-slide');
+    }
 
     setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 1200);
 
+    // Siapkan index untuk slide berikutnya
     currentSlideIndex++;
     if (currentSlideIndex >= activeMachines.length) {
         currentSlideIndex = 0;
     }
 
-    clearTimeout(slideTimer);
     slideTimer = setTimeout(runSlideshow, 15000); // SLIDESHOW GANTI MESIN TIAP 15 DETIK
 }
 
@@ -73,8 +84,8 @@ function toNum(val) {
 function renderFilterModal() {
     const container = document.getElementById('filter-dynamic-body');
     const modalEl = document.getElementById('modalFilterDashboard');
-    
-    if (modalEl.classList.contains('show')) return; 
+
+    if (modalEl.classList.contains('show')) return;
 
     let html = '';
     for (const [msn, meta] of Object.entries(lineMeta)) {
@@ -105,17 +116,13 @@ function renderFilterModal() {
                         <input class="form-check-input filter-param-cb-${msn}" type="checkbox" id="cb-param-${msn}-${safeP}" data-param="${p}" ${isParamChecked}>
                         <label class="form-check-label fw-bold text-secondary" for="cb-param-${msn}-${safeP}">${p}</label>
                     </div>
-                    <select class="form-select form-select-sm filter-chart-sel-${msn}" data-param="${p}" style="width: 140px; border-color:#1F4E78;">
-                        <option value="Line" ${!isBar ? 'selected' : ''}>📈 Line Chart</option>
-                        <option value="Bar" ${isBar ? 'selected' : ''}>📊 Bar Chart</option>
-                    </select>
                 </div>
             `;
         });
         html += `</div></div>`;
     }
-    
-    if(html !== '') container.innerHTML = html;
+
+    if (html !== '') container.innerHTML = html;
 }
 
 function applyDashboardFilter() {
@@ -127,18 +134,12 @@ function applyDashboardFilter() {
         dashboardPrefs[msn].showLine = lineCb.checked;
 
         const paramCbs = document.querySelectorAll(`.filter-param-cb-${msn}`);
-        const paramSels = document.querySelectorAll(`.filter-chart-sel-${msn}`);
 
         paramCbs.forEach(cb => {
             const p = cb.dataset.param;
             if (!dashboardPrefs[msn].params[p]) dashboardPrefs[msn].params[p] = {};
             dashboardPrefs[msn].params[p].show = cb.checked;
-        });
-
-        paramSels.forEach(sel => {
-            const p = sel.dataset.param;
-            if (!dashboardPrefs[msn].params[p]) dashboardPrefs[msn].params[p] = {};
-            dashboardPrefs[msn].params[p].type = sel.value;
+            dashboardPrefs[msn].params[p].type = 'Line'; // Paksa selalu Line
         });
     }
 
@@ -158,12 +159,27 @@ function applyDashboardFilter() {
 
     currentSlideIndex = 0;
     if (isTvMode) runSlideshow();
-    refreshDashboardEngine(); 
+    refreshDashboardEngine();
 }
 
 // ==========================================
 // MESIN PENARIK DATA UTAMA (TIAP 5 DETIK)
 // ==========================================
+
+function calculateSPCStats(dataArray) {
+    let valid = dataArray.filter(d => d !== null && !isNaN(d));
+    if (valid.length === 0) return { cl: 0, std: 0, ucl: 0, lcl: 0 };
+    let sum = valid.reduce((a, b) => a + b, 0);
+    let cl = sum / valid.length;
+    let varianceSum = valid.reduce((a, b) => a + Math.pow(b - cl, 2), 0);
+    let std = valid.length > 1 ? Math.sqrt(varianceSum / (valid.length - 1)) : 0;
+    return {
+        cl: cl.toFixed(2),
+        std: std.toFixed(2),
+        ucl: (cl + (3 * std)).toFixed(2),
+        lcl: (cl - (3 * std)).toFixed(2)
+    };
+}
 async function refreshDashboardEngine() {
     if (!isTvMode) return; // Label mode manual diurus sama jam real-time
 
@@ -176,14 +192,29 @@ async function refreshDashboardEngine() {
             const mainContainer = document.getElementById('dynamic-dashboard');
             let newlyDiscovered = false;
 
+            if (!result.data || result.data.length === 0) {
+                mainContainer.innerHTML = '<div class="alert alert-info text-center mt-5"><h4>Belum ada data QC.</h4><p>Data masih kosong. Silakan input data melalui halaman utama.</p></div>';
+                document.getElementById('filter-dynamic-body').innerHTML = '<div class="text-center py-4 text-muted">Belum ada line yang aktif.</div>';
+                return;
+            }
+
             result.data.forEach(mObj => {
                 const msn = mObj.mesin;
                 const msn_asli = msn.split('-')[0];
                 const blockId = `machine-block-${msn}`;
 
                 let paramDin = {};
-                try { paramDin = JSON.parse(mObj.current.parameter_dinamis) || {}; } catch (e) {}
-                let keys = Object.keys(paramDin);
+                try { paramDin = JSON.parse(mObj.current.parameter_dinamis) || {}; } catch (e) { }
+
+                let stdParams = {};
+                try {
+                    (JSON.parse(mObj.current.standar_parameter) || []).forEach(sp => { stdParams[sp.name] = sp; });
+                } catch (e) { }
+
+                let keys = Object.keys(stdParams);
+                if (keys.length === 0) {
+                    keys = Object.keys(paramDin);
+                }
 
                 // DAFTARKAN METADATA LINE BARU
                 if (!lineMeta[msn]) {
@@ -212,16 +243,18 @@ async function refreshDashboardEngine() {
                     machineCharts[msn] = { charts: {} };
                     const structureHtml = `
                         <div id="${blockId}" class="machine-block">
-                            <div class="machine-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <div class="d-flex align-items-center gap-3">
-                                    <span class="machine-title">LINE ${msn_asli} <span id="txt-produk-${msn}" class="badge bg-warning text-dark ms-2">📦 Memuat...</span></span>
-                                    <span id="badge-status-${msn}" class="badge status-badge bg-secondary">WAITING DATA</span>
+                            <div class="machine-header d-flex flex-column gap-3">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 gap-md-3">
+                                        <span class="machine-title">LINE ${msn_asli} <span id="txt-produk-${msn}" class="badge bg-warning text-dark ms-0 ms-md-2">📦 Memuat...</span></span>
+                                        <span id="badge-status-${msn}" class="badge status-badge bg-secondary align-self-start align-self-md-center">WAITING DATA</span>
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap text-nowrap">
+                                        <div class="stat-tag">Shift: <span id="txt-shift-${msn}" class="fw-bold">-</span> / Grup: <span id="txt-grup-${msn}" class="fw-bold">-</span></div>
+                                        <div class="stat-tag text-muted" id="txt-time-${msn}">-</div>
+                                    </div>
                                 </div>
                                 <div class="d-flex gap-2 flex-wrap text-nowrap" id="tags-container-${msn}">
-                                    </div>
-                                <div class="d-flex gap-2 flex-wrap text-nowrap">
-                                    <div class="stat-tag">Shift: <span id="txt-shift-${msn}" class="fw-bold">-</span> / Grup: <span id="txt-grup-${msn}" class="fw-bold">-</span></div>
-                                    <div class="stat-tag text-muted" id="txt-time-${msn}">-</div>
                                 </div>
                             </div>
                             <div class="charts-grid" id="charts-container-${msn}">
@@ -229,7 +262,7 @@ async function refreshDashboardEngine() {
                         </div>
                     `;
                     mainContainer.insertAdjacentHTML('beforeend', structureHtml);
-                    
+
                     if (dashboardPrefs[msn].showLine === false) {
                         document.getElementById(blockId).style.display = 'none';
                     } else {
@@ -243,14 +276,11 @@ async function refreshDashboardEngine() {
                     return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} (${h.waktu})`;
                 });
 
-                let stdParams = {};
-                try {
-                    (JSON.parse(mObj.current.standar_parameter) || []).forEach(sp => { stdParams[sp.name] = sp; });
-                } catch (e) {}
-
                 document.getElementById(`txt-produk-${msn}`).innerText = `${mObj.current.nama_produk}`;
                 document.getElementById(`txt-time-${msn}`).innerText = mObj.current.waktu_update;
-                document.getElementById(`txt-shift-${msn}`).innerText = mObj.current.shift_aktif;
+                let rawShift = mObj.current.shift_aktif || '';
+                let numShift = String(rawShift).replace(/[^0-9]/g, '');
+                document.getElementById(`txt-shift-${msn}`).innerText = numShift || rawShift;
                 document.getElementById(`txt-grup-${msn}`).innerText = mObj.current.grup_aktif;
 
                 const bStatus = document.getElementById(`badge-status-${msn}`);
@@ -264,9 +294,12 @@ async function refreshDashboardEngine() {
                 document.getElementById(`tags-container-${msn}`).innerHTML = tagsHtml;
 
                 let subcontainer = document.getElementById(`charts-container-${msn}`);
-                
+
+                // OPTIMASI BROWSER: Jika line ini di-hide oleh user, jangan render chart sama sekali (hemat RAM 90%)
+                if (dashboardPrefs[msn].showLine === false) return;
+
                 keys.forEach((key) => {
-                    let safeKey = key.replace(/[^a-zA-Z0-9]/g, '_'); 
+                    let safeKey = key.replace(/[^a-zA-Z0-9]/g, '_');
                     let cid = `c-chart-${msn}-${safeKey}`;
                     let boxId = `box-chart-${msn}-${safeKey}`;
 
@@ -284,13 +317,36 @@ async function refreshDashboardEngine() {
                     }
 
                     if (!document.getElementById(boxId)) {
-                        subcontainer.insertAdjacentHTML('beforeend', `<div class="chart-box" id="${boxId}"><div class="height-main"><canvas id="${cid}"></canvas></div></div>`);
+                        subcontainer.insertAdjacentHTML('beforeend', `
+                            <div class="chart-box" id="${boxId}">
+                                <div class="height-main"><canvas id="${cid}"></canvas></div>
+                                <div class="mt-2 text-center" style="font-size: 11.5px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 6px; padding: 5px;">
+                                    <span class="me-3"><strong>CL: <span class="text-dark" id="spc-cl-${boxId}">-</span></strong></span>
+                                    <span class="me-3">StdDev: <strong class="text-dark" id="spc-std-${boxId}">-</strong></span>
+                                    <span class="me-3">UCL: <strong class="text-dark" id="spc-ucl-${boxId}">-</strong></span>
+                                    <span>LCL: <strong class="text-dark" id="spc-lcl-${boxId}">-</strong></span>
+                                </div>
+                            </div>
+                        `);
                     }
 
+                    let lastKnownValue = null;
                     let cData = mObj.history.map(h => {
-                        try { return parseFloat((JSON.parse(h.parameter_dinamis) || {})[key]) || 0; }
-                        catch(e) { return 0; }
+                        try {
+                            let pd = JSON.parse(h.parameter_dinamis) || {};
+                            if (pd[key] !== undefined && pd[key] !== null && String(pd[key]).trim() !== '') {
+                                lastKnownValue = parseFloat(pd[key]);
+                            }
+                        } catch (e) { }
+                        return lastKnownValue; // Forward fill visual
                     });
+
+                    // Update ringkasan SPC di UI secara real-time
+                    let stats = calculateSPCStats(cData);
+                    document.getElementById(`spc-cl-${boxId}`).innerText = stats.cl;
+                    document.getElementById(`spc-std-${boxId}`).innerText = stats.std;
+                    document.getElementById(`spc-ucl-${boxId}`).innerText = stats.ucl;
+                    document.getElementById(`spc-lcl-${boxId}`).innerText = stats.lcl;
 
                     let stdP = stdParams[key] || {};
                     const lsl = toNum(stdP.lcl);
@@ -299,7 +355,7 @@ async function refreshDashboardEngine() {
                     const chartType = isBar ? 'bar' : 'line';
 
                     const pointColors = cData.map(val => (lsl !== null && val < lsl) || (usl !== null && val > usl) ? '#dc3545' : '#0d6efd');
-                    const pointSizes = cData.map(val => (lsl !== null && val < lsl) || (usl !== null && val > usl) ? 6 : 3);
+                    const pointSizes = cData.map(val => (lsl !== null && val < lsl) || (usl !== null && val > usl) ? 4 : 3);
 
                     if (!machineCharts[msn].charts[key]) {
                         const ctx = document.getElementById(cid).getContext('2d');
@@ -334,7 +390,7 @@ async function refreshDashboardEngine() {
                         ch.data.datasets[0].pointRadius = isBar ? 0 : pointSizes;
                         ch.data.datasets[0].pointBackgroundColor = pointColors;
                         ch.data.datasets[0].pointBorderColor = pointColors;
-                        ch.data.datasets[0].tension = 0; 
+                        ch.data.datasets[0].tension = 0;
 
                         ch.data.datasets[1].data = Array(cData.length).fill(lsl);
                         ch.data.datasets[1].label = lsl !== null ? `LSL (${lsl})` : 'LSL';
@@ -362,14 +418,14 @@ async function refreshDashboardEngine() {
 setInterval(() => {
     const syncBadge = document.getElementById('global-sync');
     if (!isTvMode) {
-        syncBadge.innerText = "PAUSED (REVIEW MODE)";
+        syncBadge.innerText = "Sedang Ditinjau";
         syncBadge.className = "badge bg-warning text-dark me-2";
     } else if (apiError) {
         syncBadge.innerText = "PUTUS API";
         syncBadge.className = "badge bg-danger me-2";
     } else {
         const timeNow = new Date().toLocaleTimeString('id-ID'); // Format: HH.MM.SS
-        syncBadge.innerText = "LIVE SYNC: " + timeNow;
+        syncBadge.innerText = "LIVE : " + timeNow;
         syncBadge.className = "badge bg-light text-dark me-2";
     }
 }, 1000);

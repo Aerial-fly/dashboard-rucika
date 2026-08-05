@@ -12,7 +12,7 @@
 <!-- GLOBAL NAVBAR -->
 <nav class="navbar navbar-expand-lg spc-nav sticky-top">
   <div class="container-fluid px-4">
-    <a class="navbar-brand" href="#">SPC Dashboard</a>
+    <a class="navbar-brand" href="#">QA Monitoring Dashboard</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -22,7 +22,7 @@
           <a class="nav-link" href="/">Form Input (Operator)</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/dashboard">TV Dashboard</a>
+          <a class="nav-link" href="/dashboard">Dashboard</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="/settings">Settings</a>
@@ -50,11 +50,16 @@
         </div>
     </div>
 
+    <form action="/api/hapus-qc-bulk" method="POST" id="bulkDeleteForm">
+    <div class="d-flex justify-content-end mb-2">
+        <button type="submit" class="btn btn-danger btn-sm" id="btnHapusTerpilih" style="display:none;" onclick="return confirm('🚨 Yakin ingin menghapus semua data yang dicentang?');">🗑️ Hapus Terpilih</button>
+    </div>
     <div class="card spc-card border-0">
         <div class="card-body p-0 table-responsive">
             <table class="table spc-table text-center mb-0 align-middle">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
                         <th>ID</th>
                         <th>Waktu Input</th>
                         <th>Produk</th>
@@ -67,6 +72,7 @@
                 <tbody>
                     {% for row in data_riwayat %}
                     <tr>
+                        <td><input type="checkbox" name="qc_ids" value="{{ row.id }}" class="row-checkbox"></td>
                         <td class="fw-bold">{{ row.id }}</td>
                         <td>{{ row.tanggal }} <br> <small class="text-muted">{{ row.waktu }}</small></td>
                         <td class="text-start fw-bold" style="color:#1F4E78;">{{ row.nama_produk if row.nama_produk else 'Produk Terhapus' }}</td>
@@ -80,7 +86,7 @@
                         <!-- KOLOM AKSI -->
                         <td>
                             <div class="d-flex justify-content-center gap-1">
-                                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editQcModal{{ row.id }}">✏️ Edit</button>
+                                <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editQcModal{{ row.id }}">✏️ Edit</button>
                                 <form action="/api/hapus-qc/{{ row.id }}" method="POST" onsubmit="return confirm('🚨 YAKIN INGIN MENGHAPUS DATA ID {{ row.id }}?');">
                                     <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
                                 </form>
@@ -133,6 +139,7 @@
             </table>
         </div>
     </div>
+    </form>
     <div class="alert alert-warning mt-3" role="alert">
         <strong>Peringatan:</strong> Halaman ini memberikan akses langsung ke database, menghapus baris di sini akan menghapusnya secara permanen dari sistem dan dari Laporan Excel.
     </div>
@@ -180,6 +187,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Select All & Toggle Hapus Terpilih Button
+document.getElementById('selectAll').addEventListener('change', function() {
+    const isChecked = this.checked;
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(cb => {
+        // Hanya centang baris yang saat ini terlihat (bisa kepotong search)
+        if (cb.closest('tr').style.display !== 'none') {
+            cb.checked = isChecked;
+        }
+    });
+    toggleBulkDeleteBtn();
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('row-checkbox')) {
+        toggleBulkDeleteBtn();
+    }
+});
+
+function toggleBulkDeleteBtn() {
+    const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+    const btn = document.getElementById('btnHapusTerpilih');
+    if (checkedCount > 0) {
+        btn.style.display = 'inline-block';
+        btn.textContent = `🗑️ Hapus Terpilih (${checkedCount})`;
+    } else {
+        btn.style.display = 'none';
+    }
+}
 
 // Live Search
 document.getElementById('searchInput').addEventListener('keyup', function() {

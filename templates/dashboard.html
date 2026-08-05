@@ -1,87 +1,130 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TV Control - Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Monitoring - Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/style.css?v=7" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body class="tv-mode">
-
-<nav class="navbar navbar-expand-lg spc-nav sticky-top">
-  <div class="container-fluid px-4">
-    <a class="navbar-brand" href="#">SPC Dashboard</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/">Form Input (Operator)</a></li>
-        <li class="nav-item"><a class="nav-link active" href="/dashboard">TV Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
-        <li class="nav-item"><a class="nav-link" href="/riwayat">Riwayat</a></li>
-      </ul>
-      <div class="dash-controls">
-        <span id="global-sync" class="badge bg-light text-dark me-2">Sync...</span>
-        <button type="button" class="btn btn-info btn-sm fw-bold text-white me-2" data-bs-toggle="modal" data-bs-target="#modalFilterDashboard">⚙️ Filter & Tampilan</button>
-        <button id="btn-mode" class="btn btn-warning btn-sm fw-bold me-2" onclick="toggleMode()">📺 Mode TV: ON</button>
-        <button type="button" class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalExport">⬇️ Download Laporan</button>
+  <nav class="navbar navbar-expand-lg spc-nav sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand" href="#">QA Monitoring Dashboard</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="/">Form Input (Operator)</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
+          <li class="nav-item"><a class="nav-link" href="/riwayat">Riwayat</a></li>
+        </ul>
+        <div class="dash-controls d-flex flex-column flex-lg-row gap-2 mt-3 mt-lg-0 align-items-lg-center">
+          <span id="global-sync" class="badge bg-light text-dark align-self-start align-self-lg-center">Sync...</span>
+          <button type="button" class="btn btn-info btn-sm fw-bold text-white" data-bs-toggle="modal"
+            data-bs-target="#modalFilterDashboard">Pengaturan Tampilan</button>
+          <button id="btn-mode" class="btn btn-warning btn-sm fw-bold" onclick="toggleMode()">Mode TV: ON</button>
+          <button type="button" class="btn btn-success btn-sm fw-bold" data-bs-toggle="modal"
+            data-bs-target="#modalExport">Export Data Excel</button>
+        </div>
       </div>
     </div>
+  </nav>
+
+  <div class="container-fluid px-4 my-4" id="dynamic-dashboard">
   </div>
-</nav>
 
-<div class="container-fluid px-4 my-4" id="dynamic-dashboard">
-    </div>
-
-<div class="modal fade" id="modalFilterDashboard" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title fw-bold">⚙️ Pengaturan Tampilan</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="filter-dynamic-body" style="background-color: #f0f4f8;">
-        <div class="text-center py-4"><span class="spinner-border text-info"></span><br>Mencari data line aktif...</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <button type="button" class="btn btn-primary" onclick="applyDashboardFilter()" data-bs-dismiss="modal">Terapkan Perubahan</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="modalExport" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form action="/api/export-excel" method="GET">
-        <div class="modal-header" style="background-color:#1F4E78; color:#fff;">
-          <h5 class="modal-title">📅 Filter Download Laporan</h5>
+  <div class="modal fade" id="modalFilterDashboard" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title fw-bold">Pengaturan Tampilan</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Dari Tanggal:</label>
-            <input type="date" class="form-control" name="start_date" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Sampai Tanggal:</label>
-            <input type="date" class="form-control" name="end_date" required>
+        <div class="modal-body" id="filter-dynamic-body" style="background-color: #f0f4f8;">
+          <div class="text-center py-4"><span class="spinner-border text-info"></span><br>Mencari data line aktif...
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-success">⬇️ Download Excel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          <button type="button" class="btn btn-primary" onclick="applyDashboardFilter()"
+            data-bs-dismiss="modal">Terapkan Perubahan</button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
-</div>
 
-<script src="/static/dashboard.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <div class="modal fade" id="modalExport" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form action="/api/export-excel" method="GET">
+          <div class="modal-header" style="background-color:#1F4E78; color:#fff;">
+            <h5 class="modal-title">Filter Download Laporan</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Pilih Produk:</label>
+              <select class="form-select" name="id_produk" required>
+                <option value="" disabled selected>-- Pilih Produk --</option>
+                {% for p in daftar_produk %}
+                <option value="{{ p.id }}">{{ p.nama_produk }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <hr>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="allTimeCheck" name="all_time"
+                onchange="toggleDateInputs()">
+              <label class="form-check-label fw-bold text-primary" for="allTimeCheck">
+                Download Semua Waktu (All Time)
+              </label>
+            </div>
+            <hr>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Dari Tanggal:</label>
+              <input type="date" class="form-control" name="start_date" id="start_date" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Sampai Tanggal:</label>
+              <input type="date" class="form-control" name="end_date" id="end_date" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-success">Download Excel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/dashboard.js?v=6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function toggleDateInputs() {
+      const isChecked = document.getElementById('allTimeCheck').checked;
+      const startDate = document.getElementById('start_date');
+      const endDate = document.getElementById('end_date');
+
+      if (isChecked) {
+        startDate.disabled = true;
+        endDate.disabled = true;
+        startDate.required = false;
+        endDate.required = false;
+      } else {
+        startDate.disabled = false;
+        endDate.disabled = false;
+        startDate.required = true;
+        endDate.required = true;
+      }
+    }
+  </script>
 </body>
+
 </html>
