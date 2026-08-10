@@ -1,6 +1,6 @@
-/* SPC Corporate Design System — Clean Blue & White */
 
-/* Google Font */
+
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 body {
@@ -10,7 +10,7 @@ body {
     color: #2c3e50;
 }
 
-/* ── Page transition (smooth fade/slide on every navigation) ── */
+
 body {
     animation: spcPageIn 0.35s ease;
 }
@@ -19,7 +19,7 @@ body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Unified Navbar ── */
+
 .spc-nav {
     background-color: #1F4E78 !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
@@ -83,7 +83,7 @@ body {
     transition: height 0.3s ease;
 }
 
-/* ── Cards ── */
+
 .spc-card {
     background: #ffffff !important;
     border: none !important;
@@ -91,7 +91,7 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* ── Tables ── */
+
 .spc-table {
     color: #2c3e50 !important;
 }
@@ -111,31 +111,29 @@ body {
     background-color: #f0f7ff !important;
 }
 
-/* ── Dashboard-specific (TV Mode kept separate) ── */
+
 .tv-mode {
     background-color: #f0f4f8 !important;
 }
 
-/* ── Dashboard utility buttons row ── */
+
 .dash-controls {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* =====================================================
-   TV DASHBOARD — Machine blocks, header, charts
-   ===================================================== */
 
-/* Each machine's whole section */
+
+
 .machine-block {
     margin-bottom: 24px;
 }
 
-/* TV MODE: Efek Crossfade Halus */
+
 body.tv-mode #dynamic-dashboard {
     position: relative;
-    min-height: 80vh; /* Mencegah layar lompat saat transisi */
+    min-height: 80vh; 
 }
 body.tv-mode .machine-block {
     position: absolute;
@@ -156,14 +154,14 @@ body.tv-mode .machine-block.active-slide {
     z-index: 1;
 }
 
-/* IN REVIEW MODE: Tampilkan semua bertumpuk normal */
+
 body:not(.tv-mode) .machine-block {
     position: relative;
     opacity: 1;
     visibility: visible;
 }
 
-/* Machine header bar */
+
 .machine-header {
     background: #ffffff;
     border-left: 5px solid #1F4E78;
@@ -182,7 +180,7 @@ body:not(.tv-mode) .machine-block {
     gap: 4px;
 }
 
-/* Small info chips (Shift/Grup/Parameter/etc) in the header */
+
 .stat-tag {
     background-color: #f0f4f8;
     border: 1px solid #e2e8f0;
@@ -193,7 +191,7 @@ body:not(.tv-mode) .machine-block {
     white-space: nowrap;
 }
 
-/* Status badge (NORMAL / OUT) */
+
 .status-badge {
     font-size: 0.8rem;
     padding: 6px 14px;
@@ -209,11 +207,10 @@ body:not(.tv-mode) .machine-block {
     50%      { opacity: 0.85; box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
 }
 
-/* Chart grid: auto-fits as many proportional columns as space allows,
-   so the layout stays neat whether a product has 0, 1, or 5 dynamic params. */
+
 .charts-grid {
     display: grid;
-    /* Force 3 columns on large screens */
+    
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     align-items: stretch;
@@ -237,10 +234,10 @@ body:not(.tv-mode) .machine-block {
     padding: 14px 16px 10px;
     display: flex;
     flex-direction: column;
-    min-width: 0; /* prevents canvas from overflowing its grid cell */
+    min-width: 0; 
 }
 
-/* Primary parameter chart stands out and gets more room */
+
 .chart-primary {
     grid-column: span 2;
 }
@@ -256,11 +253,10 @@ body:not(.tv-mode) .machine-block {
     margin-bottom: 4px;
 }
 
-/* Fixed, proportional heights so Chart.js (maintainAspectRatio:false)
-   always has a bounded box to render into. */
+
 .height-main {
     position: relative;
-    /* Disesuaikan menjadi 26vh agar box summary di bawahnya muat 100% tanpa perlu scroll di TV */
+    
     height: 26vh; 
     min-height: 180px;
     width: 100%;
@@ -275,7 +271,7 @@ body:not(.tv-mode) .machine-block {
     animation: spcPageIn 0.3s ease;
 }
 
-/* MEDIA QUERIES UNTUK RESPONSIVE DI HP */
+
 @media (max-width: 767.98px) {
     .stat-tag {
         font-size: 0.75rem;

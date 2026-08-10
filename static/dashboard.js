@@ -3,11 +3,7 @@ let activeMachines = [];
 let isTvMode = true;
 let currentSlideIndex = 0;
 let slideTimer = null;
-
-// STATUS API UNTUK JAM REAL-TIME
 let apiError = false;
-
-// MEMORI V2: Simpan preferensi Per-Line
 let lineMeta = {};
 let dashboardPrefs = JSON.parse(localStorage.getItem('spc_prefs_v2')) || {};
 
@@ -43,13 +39,11 @@ function toggleMode() {
 }
 
 function runSlideshow() {
-    clearTimeout(slideTimer); // Clear at the very beginning to prevent race conditions
+    clearTimeout(slideTimer);
 
     if (!isTvMode || activeMachines.length === 0) {
         return;
     }
-
-    // Pastikan index tidak out of bounds jika ada mesin yang dihapus
     if (currentSlideIndex >= activeMachines.length) {
         currentSlideIndex = 0;
     }
@@ -63,24 +57,18 @@ function runSlideshow() {
     }
 
     setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 1200);
-
-    // Siapkan index untuk slide berikutnya
     currentSlideIndex++;
     if (currentSlideIndex >= activeMachines.length) {
         currentSlideIndex = 0;
     }
 
-    slideTimer = setTimeout(runSlideshow, 15000); // SLIDESHOW GANTI MESIN TIAP 15 DETIK
+    slideTimer = setTimeout(runSlideshow, 15000);
 }
 
 function toNum(val) {
     const n = parseFloat(val);
     return isNaN(n) ? null : n;
 }
-
-// ==========================================
-// RENDER MODAL UI (Berdasarkan Line)
-// ==========================================
 function renderFilterModal() {
     const container = document.getElementById('filter-dynamic-body');
     const modalEl = document.getElementById('modalFilterDashboard');
@@ -139,7 +127,7 @@ function applyDashboardFilter() {
             const p = cb.dataset.param;
             if (!dashboardPrefs[msn].params[p]) dashboardPrefs[msn].params[p] = {};
             dashboardPrefs[msn].params[p].show = cb.checked;
-            dashboardPrefs[msn].params[p].type = 'Line'; // Paksa selalu Line
+            dashboardPrefs[msn].params[p].type = 'Line';
         });
     }
 
@@ -162,10 +150,6 @@ function applyDashboardFilter() {
     refreshDashboardEngine();
 }
 
-// ==========================================
-// MESIN PENARIK DATA UTAMA (TIAP 5 DETIK)
-// ==========================================
-
 function calculateSPCStats(dataArray) {
     let valid = dataArray.filter(d => d !== null && !isNaN(d));
     if (valid.length === 0) return { cl: 0, std: 0, ucl: 0, lcl: 0 };
@@ -181,14 +165,14 @@ function calculateSPCStats(dataArray) {
     };
 }
 async function refreshDashboardEngine() {
-    if (!isTvMode) return; // Label mode manual diurus sama jam real-time
+    if (!isTvMode) return;
 
     try {
         const response = await fetch('/api/qc-data');
         const result = await response.json();
 
         if (result.status === 'success') {
-            apiError = false; // Reset status error API
+            apiError = false;
             const mainContainer = document.getElementById('dynamic-dashboard');
             let newlyDiscovered = false;
 
@@ -215,8 +199,6 @@ async function refreshDashboardEngine() {
                 if (keys.length === 0) {
                     keys = Object.keys(paramDin);
                 }
-
-                // DAFTARKAN METADATA LINE BARU
                 if (!lineMeta[msn]) {
                     lineMeta[msn] = { params: new Set() };
                     newlyDiscovered = true;
@@ -227,8 +209,6 @@ async function refreshDashboardEngine() {
                         newlyDiscovered = true;
                     }
                 });
-
-                // INIT PREFS DEFAULT (Jika belum ada)
                 if (!dashboardPrefs[msn]) {
                     dashboardPrefs[msn] = { showLine: true, params: {} };
                 }
@@ -237,8 +217,6 @@ async function refreshDashboardEngine() {
                         dashboardPrefs[msn].params[k] = { show: true, type: 'Line' };
                     }
                 });
-
-                // 1. BUAT KOTAK MESIN JIKA BELUM ADA
                 if (!document.getElementById(blockId)) {
                     machineCharts[msn] = { charts: {} };
                     const structureHtml = `
@@ -294,8 +272,6 @@ async function refreshDashboardEngine() {
                 document.getElementById(`tags-container-${msn}`).innerHTML = tagsHtml;
 
                 let subcontainer = document.getElementById(`charts-container-${msn}`);
-
-                // OPTIMASI BROWSER: Jika line ini di-hide oleh user, jangan render chart sama sekali (hemat RAM 90%)
                 if (dashboardPrefs[msn].showLine === false) return;
 
                 keys.forEach((key) => {
@@ -338,10 +314,8 @@ async function refreshDashboardEngine() {
                                 lastKnownValue = parseFloat(pd[key]);
                             }
                         } catch (e) { }
-                        return lastKnownValue; // Forward fill visual
+                        return lastKnownValue;
                     });
-
-                    // Update ringkasan SPC di UI secara real-time
                     let stats = calculateSPCStats(cData);
                     document.getElementById(`spc-cl-${boxId}`).innerText = stats.cl;
                     document.getElementById(`spc-std-${boxId}`).innerText = stats.std;
@@ -408,13 +382,9 @@ async function refreshDashboardEngine() {
             if (newlyDiscovered) renderFilterModal();
         }
     } catch (err) {
-        apiError = true; // Kalau API gagal, trigger status merah
+        apiError = true;
     }
 }
-
-// ==========================================
-// JAM REAL-TIME (JALAN TIAP 1 DETIK)
-// ==========================================
 setInterval(() => {
     const syncBadge = document.getElementById('global-sync');
     if (!isTvMode) {
@@ -424,14 +394,10 @@ setInterval(() => {
         syncBadge.innerText = "PUTUS API";
         syncBadge.className = "badge bg-danger me-2";
     } else {
-        const timeNow = new Date().toLocaleTimeString('id-ID'); // Format: HH.MM.SS
+        const timeNow = new Date().toLocaleTimeString('id-ID');
         syncBadge.innerText = "LIVE : " + timeNow;
         syncBadge.className = "badge bg-light text-dark me-2";
     }
 }, 1000);
-
-// Jalanin API pertama kali
 refreshDashboardEngine();
-
-// TARIK DATA DARI SERVER TETAP TIAP 5 DETIK
 setInterval(refreshDashboardEngine, 5000);

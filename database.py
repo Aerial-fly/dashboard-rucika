@@ -1,7 +1,5 @@
 import os
 import mysql.connector
-
-# --- KONFIGURASI DATABASE ---
 db_config = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'port': int(os.environ.get('DB_PORT', 3306)),
