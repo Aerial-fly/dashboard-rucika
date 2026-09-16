@@ -187,7 +187,18 @@
                 console.error("Gagal memuat daftar mesin:", error);
             }
         }
-        document.addEventListener('DOMContentLoaded', loadMesin);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMesin();
+            const urlParams = new URLSearchParams(window.location.search);
+            const prodId = urlParams.get('p');
+            if (prodId) {
+                const sel = document.getElementById('id_produk');
+                if (sel) {
+                    sel.value = prodId;
+                    sel.dispatchEvent(new Event('change'));
+                }
+            }
+        });
         document.getElementById('id_produk').addEventListener('change', async function () {
             const id = this.value;
             if (!id) return;
